@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05070a">
+<meta name="robots" content="noindex">
+<title>Placar da gincana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<script src="placar.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{--bg:#05070a;--txt:#eef2f6;--mut:#8590a0;--vidro:rgba(255,255,255,.04);--linha:rgba(255,255,255,.09)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;color:var(--txt);font-family:"Sora",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(70vw 60vh at 0% 0%,rgba(31,91,255,.18),transparent 70%),radial-gradient(70vw 60vh at 100% 100%,rgba(13,180,100,.16),transparent 70%),var(--bg);
+    padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+  button,input{font:inherit;color:inherit}
+  button{cursor:pointer;border:0;background:none}
+  :focus-visible{outline:2px solid #fff;outline-offset:2px}
+  main{max-width:640px;margin:0 auto;padding:40px 20px 60px}
+  h1{font-size:34px;font-weight:700;letter-spacing:-.02em}
+  .sub{color:var(--mut);margin-top:8px;line-height:1.5}
+  .estado{margin-top:22px;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.5}
+  .estado.ok{background:rgba(52,210,123,.08);border:1px solid rgba(52,210,123,.3);color:#9ce8bd}
+  .estado.demo{background:rgba(245,184,61,.08);border:1px solid rgba(245,184,61,.3);color:#f5d28a}
+  .campo{display:flex;flex-direction:column;gap:8px;margin-top:26px}
+  .campo>span{font-size:13px;color:var(--mut)}
+  .linha{display:flex;gap:8px}
+  .inp{flex:1;min-width:0;height:50px;padding:0 14px;border-radius:14px;border:1px solid var(--linha);background:rgba(255,255,255,.05);font-size:17px;letter-spacing:.04em}
+  .dica{font-size:13px;color:var(--mut);margin-top:8px;line-height:1.5}
+  .btn-claro{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 18px;border-radius:12px;background:#eef2f6;color:#05070a;font-weight:600;text-decoration:none}
+  .btn-vidro{display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 16px;border-radius:12px;background:var(--vidro);border:1px solid var(--linha);font-weight:600}
+  .linha .btn-vidro{height:50px}
+  .cartao{margin-top:16px;padding:18px;border-radius:20px;border:1px solid var(--linha);background:var(--vidro);display:grid;gap:14px}
+  .cartao b{display:block;font-size:19px}
+  .cartao p{color:var(--mut);font-size:14px;line-height:1.5;margin-top:4px}
+  .cartao code{font-family:inherit;font-size:12px;color:var(--mut);word-break:break-all}
+  .botoes{display:flex;gap:8px;flex-wrap:wrap}
+  .qr{justify-self:start;padding:12px;border-radius:14px;background:#fff;line-height:0}
+  .qr:empty{display:none}
+  #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border-radius:14px;background:#eef2f6;color:#05070a;font-weight:600}
+  #toast[hidden]{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>Placar da gincana</h1>
+  <p class="sub">O telão mostra o placar no projetor e o staff atualiza pelo celular, em tempo real.</p>
+  <div class="estado" id="estado"></div>
+
+  <label class="campo"><span>Código da sala</span>
+    <div class="linha"><input class="inp" id="codigo" maxlength="40" spellcheck="false" autocapitalize="off" autocomplete="off"><button type="button" class="btn-vidro" id="gerar">Gerar novo</button></div>
+  </label>
+  <p class="dica">O código vai dentro dos links. Quem tem o link do staff consegue lançar pontos, então envie só para a equipe que vai operar.</p>
+
+  <section class="cartao">
+    <div><b>Telão</b><p>Abra no computador ligado ao projetor. Aperte F (ou dê dois cliques) para tela cheia.</p></div>
+    <code id="lk-telao"></code>
+    <div class="botoes"><a class="btn-claro" id="ab-telao" target="_blank" rel="noopener">Abrir telão</a><button type="button" class="btn-vidro" data-c="lk-telao">Copiar link</button></div>
+  </section>
+
+  <section class="cartao">
+    <div><b>Staff</b><p>Abra no celular de quem vai lançar os pontos. Aponte a câmera para o QR.</p></div>
+    <div class="qr" id="qr"></div>
+    <code id="lk-staff"></code>
+    <div class="botoes"><a class="btn-claro" id="ab-staff" target="_blank" rel="noopener">Abrir staff</a><button type="button" class="btn-vidro" data-c="lk-staff">Copiar link</button></div>
+  </section>
+</main>
+<div id="toast" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+  const P = window.Placar;
+  const $ = (s) => document.querySelector(s);
+  const K = "placar:codigo";
+  const limpar = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+
+  const est = $("#estado");
+  if (P.temFirebase()) {
+    est.className = "estado ok";
+    est.textContent = "Firebase configurado. Telão e celulares sincronizam pela internet.";
+  } else {
+    est.className = "estado demo";
+    est.textContent = "Modo demonstração: o config.js ainda não tem o Firebase. Telão e staff só sincronizam se estiverem abertos no mesmo navegador, em abas diferentes.";
+  }
+
+  const inp = $("#codigo");
+  let cod = "";
+  try { cod = limpar(localStorage.getItem(K)); } catch (e) {}
+  if (cod.length < 10) cod = P.gerarCodigo(12);
+
+  function aplicar() {
+    cod = limpar(inp.value);
+    try { localStorage.setItem(K, cod); } catch (e) {}
+    const curto = cod.length < 10;
+    const telao = P.linkPara("telao.html", cod), staff = P.linkPara("staff.html", cod);
+    $("#lk-telao").textContent = curto ? "Use um código com pelo menos 10 caracteres" : telao;
+    $("#lk-staff").textContent = curto ? "Use um código com pelo menos 10 caracteres" : staff;
+    $("#ab-telao").href = curto ? "#" : telao;
+    $("#ab-staff").href = curto ? "#" : staff;
+    const qr = $("#qr");
+    qr.innerHTML = "";
+    if (!curto && window.QRCode) new QRCode(qr, { text: staff, width: 176, height: 176, colorDark: "#05070a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+  }
+  inp.value = cod;
+  inp.addEventListener("input", aplicar);
+  $("#gerar").onclick = () => {
+    if (!confirm("Gerar um código novo? Os links antigos deixam de mostrar este placar.")) return;
+    inp.value = P.gerarCodigo(12);
+    aplicar();
+  };
+  document.querySelectorAll("[data-c]").forEach((b) => {
+    b.onclick = async () => {
+      const t = $("#" + b.dataset.c).textContent;
+      try { await navigator.clipboard.writeText(t); aviso("Link copiado"); } catch (e) { prompt("Copie o link:", t); }
+    };
+  });
+  let tAviso;
+  function aviso(txt) { const t = $("#toast"); t.textContent = txt; t.hidden = false; clearTimeout(tAviso); tAviso = setTimeout(() => (t.hidden = true), 2000); }
+  aplicar();
+})();
+</script>
+</body>
+</html>
