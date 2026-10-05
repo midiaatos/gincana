@@ -14,7 +14,15 @@
       as regras (database.rules.json) e o código da sala que vai no link.
    ========================================================================= */
 
-window.PLACAR_FIREBASE = null;
+window.PLACAR_FIREBASE = {
+  apiKey: "AIzaSyCkrLBdQ2-fbmt-CHv4KO0r7lZ3R3Fy_No",
+  authDomain: "placar-gincana.firebaseapp.com",
+  databaseURL: "https://placar-gincana-default-rtdb.firebaseio.com",
+  projectId: "placar-gincana",
+  storageBucket: "placar-gincana.firebasestorage.app",
+  messagingSenderId: "704276887002",
+  appId: "1:704276887002:web:2d8554834c22dda78cfce3"
+};
 
 /* Exemplo (substitua pelos dados do seu projeto):
 window.PLACAR_FIREBASE = {
